@@ -1,5 +1,6 @@
-TITLE by YOUR_NAME_HERE
+2016 Presidential Election Contributions in Ohio by Jamie Brand
 ========================================================
+# Dataset
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
 # Load all of the packages that you end up using
@@ -14,7 +15,187 @@ library(ggplot2)
 
 ```{r echo=FALSE, Load_the_Data}
 # Load the Data
+setwd("/home/jb/Documents/Data\ Science/udacity_eda_in_r")
+ohio <- read.csv("P00000001-OH.csv",row.names=NULL,header = TRUE, na.strings = '"')
+# Row names are incorrect due to trailing comma on every line but the headings. 
+newnames = colnames(ohio)[2:19]
+ohio$election_tp <- NULL
+colnames(ohio) <- newnames
 
+
+```
+
+### Candidate Names (cand_nm)
+```{r echo=FALSE,Check_Names}
+
+sort(table(ohio$cand_nm))
+# Changing fully capitalized factor to normal capitalization
+checkcapitalization <- function(cand_nm){
+  if (cand_nm == "CRUZ, RAFAEL EDWARD TED") {
+    cand_nm = "Cruz, Rafael Edward 'Ted'"
+  }
+  return(cand_nm)
+}
+ohio$cand_nm <- apply(as.matrix(ohio$cand_nm),1,checkcapitalization)
+```
+
+There is a duplicate factor here with "CRUZ, RAFAEL EDWARD TED". I changed each instance of it to "Cruz, Rafael Edward 'Ted'" to match the rest of the dataset. 
+
+
+### Candidate Id, File Number, and FILER ID.  (cand_id,file_nm and cmte_id)
+```{r echo=FALSE,Clear_useless_data}
+# Drop unneeded collumns
+# These columns all contain or vary by the same information - the candidate
+
+# Row names, form_tp and cmte_id all correlate 100% with cand_id so removing
+sort(table(ohio$cand_nm))
+sort(table(ohio$cand_id))
+sort(table(ohio$file_num))
+sort(table(ohio$cmte_id))
+ohio$cand_id <- NULL
+ohio$file_num <- NULL
+ohio$cmte_id <- NULL
+```
+The cand_nm,cand_id,file_nm and cmte_id all collerate 100% so I kept the candidate name (cand_nm) but removed the others. 
+
+### Contributor state (contbr_st)
+```{r echo=FALSE,Remove_duplicate_rows}
+
+# Refers to the state. All the values are the same as this is the Ohio dataset
+# Removing
+table(ohio$contbr_st)
+ohio$contbr_st <- NULL
+```
+No need to keep the contrbr_st features as it refers to the state which is the same throughout this dataset.
+
+### Election type (election_tp)
+```{r echo=FALSE}
+# 19 Rows of donations for the general election
+# Many of these rows have reciept_texts describing a redesignation from other campaings. 
+table(ohio$election_tp)
+#ohio = ohio[ohio$election_tp == 'P2016',]
+
+```
+Values of G2016 Appear to be contributions which have been reassigned (see Receipt_desc feature)
+
+
+### Reciept description (reciept_desc)
+```{r echo=FALSE}
+# Reciept_desc Feature
+
+table(ohio$receipt_desc)
+
+```
+Details of reattribution or redesignation. 
+
+### Memo code (memo_cd)
+```{r echo=FALSE}
+# Memo CD feature 
+table(ohio$memo_cd)
+#ohio[ohio$memo_cd == "X",]
+# Only one value fo memo_cd doesn't seem to have any meaning so removing.
+
+```
+According to : 
+http://www.fec.gov/finance/disclosure/metadata/DataDictionaryContributionsbyIndividuals.shtml
+X' indicates that the amount is NOT to be included in the itemization total. 
+
+
+### Memo text (memo_text)
+```{r echo=FALSE}
+
+# Memo Text Feature
+table(ohio$memo_text)
+# Approximately 10% of contributions are earmarked contributions. 
+```
+Memo_text feature: Approximately 10% of contributions are earmarked contributions. 
+### Transaction id (tran_id)
+The transaction id features was removed as it contains no useful information.
+```{r echo=FALSE}
+
+ohio$tran_id <- NULL
+
+```
+### Form type (form_tp)
+```{r echo=FALSE}
+
+# Three Factors 
+
+#SA17A  = Contribution from individuals other than political orgnaisations
+#SA18 = Transfers from other authorized commitees
+#SA28A = Refunds to individuals other than political orgnaisations
+# As shown on this form: 
+# http://www.fec.gov/finance/disclosure/metadata/DataDictionaryTransactionTypeCodes.shtml
+table(ohio$form_tp)
+
+
+```
+
+The form_tp factor levels refer to the following:
+SA17A  = Contribution from individuals other than political orgnaisations
+SA18 = Transfers from other authorized commitees
+SA28A = Refunds to individuals other than political orgnaisations
+
+As shown on this form: 
+http://www.fec.gov/finance/disclosure/metadata/DataDictionaryTransactionTypeCodes.shtml
+
+
+### Additional Candidate Information
+```{r echo=FALSE}
+
+cands <- read.csv("candidates.csv",row.names=NULL,header = TRUE, na.strings = '"')
+cands
+getage <- function(cand_nm){
+  age = cands[cands$Name==cand_nm,][1,2]
+  return(age)
+}
+ohio$cand_age <- apply(as.matrix(ohio$cand_nm),1,getage)
+
+getgender <- function(cand_nm){
+  gender = cands[cands$Name==cand_nm,][1,3]
+  return(gender)
+}
+ohio$cand_gender <- apply(as.matrix(ohio$cand_nm),1,getgender)
+
+getparty <- function(cand_nm){
+  party = cands[cands$Name==cand_nm,][1,4]
+  return(party)
+}
+ohio$cand_party <- apply(as.matrix(ohio$cand_nm),1,getparty)
+
+
+
+```
+As there are not a huge number of candidates I manually collated extra data about each of them in an csv file. These were added as features in the main dataset.
+
+### Predicted Contributor Gender (contbr_gender)
+A predicted gender of contributor feature was created based on the contributors first name. 
+
+It was made with a free csv file of first names with genders. 
+http://tedwise.com/2011/02/08/check-the-gender-of-a-first-name
+
+This method could not predict every gender so there a number of N/A values. While the genders that are predictied may not be 100% correct they should be good enough to look for trends in the data. 
+```{r echo=FALSE}
+names <- read.csv("names.csv",row.names=NULL,header = FALSE, na.strings = '"')
+
+getcont_gender <- function(cont_nm){
+  cont_nm = strsplit(cont_nm,",")[[1]][2]
+  cont_nm = strsplit(cont_nm," ")[[1]][2]
+  gender = names[names$V1 == cont_nm,][1,2]
+  return(gender)
+}
+
+ohio$contbr_gender <-  apply(as.matrix(ohio$contbr_nm),1,getcont_gender)
+
+
+table(ohio$contbr_gender)
+```
+###Summary of dataset
+
+```{r echo=FALSE}
+summary(ohio)
+
+dim(ohio)
 ```
 
 # Univariate Plots Section
