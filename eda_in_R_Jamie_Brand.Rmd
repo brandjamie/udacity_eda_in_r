@@ -12,6 +12,7 @@
 
 library(ggplot2)
 library(dplyr)
+library(reshape2)
 ```
 
 ```{r echo=FALSE, Load_the_Data}
@@ -566,7 +567,48 @@ ggplot(ohio,aes(x = contb_receipt_amt)) +
 
 From this plot it seems that there is as much difference in the distributions as first thought. The difference in the box plot is likely due to the much higher number of contributions made to the Rupublican party overall. 
 
-### 
+### How Occupations contribute by Party
+
+For this I wanted to look at a wide variety of occupations. I readded the occpation "owner" as there were a number of similarly ambigious occupation titles but I felt if took them all out I might miss some interesting patterns.
+
+Here are the 25 most common occupations in our dataset, the number of total contributions each occupation has made and which party the contributions were for. 
+
+```{r echo=FALSE}
+occs = ohio[ohio$contbr_occupation != "INFORMATION REQUESTED",]
+occs = occs[occs$contbr_occupation != "",]
+occs = occs[occs$contbr_occupation != "INFORMATION REQUESTED PER BEST EFFORTS",]
+
+topocc = sort(table(occs$contbr_occupation),decreasing = TRUE)[1:25]
+
+occs = ohio[ohio$contbr_occupation %in% rownames(topocc),]
+
+summary(occs$contbr_occupation)
+
+occbyparty <- occs %>% 
+    group_by(contbr_occupation,cand_party) %>% summarise(num=length(contbr_occupation))
+
+occs <- dcast(occbyparty, contbr_occupation + num ~ cand_party,value.var="num")
+
+
+occbyparty <- occs %>% 
+    group_by(contbr_occupation) %>%   
+    summarise(dem=sum(Democratic,na.rm=TRUE),ind = sum(Independent,na.rm=TRUE),rep=sum(Republican,na.rm=TRUE))
+
+as.data.frame(occbyparty)
+
+occbyparty$total <- occbyparty$dem + occbyparty$ind + occbyparty$rep
+
+occbyparty$dempercent <- (occbyparty$dem/occbyparty$total)*100
+
+occbyparty$indpercent <- (occbyparty$ind/occbyparty$total)*100
+
+occbyparty$reppercent <- (occbyparty$rep/occbyparty$total)*100
+
+
+```
+
+
+
 
 
 
