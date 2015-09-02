@@ -1,0 +1,47 @@
+Description
+
+This dataset was downloaded on 16th of August 2015 from http://fec.gov/disclosurep/PDownload.do
+
+It contains donations made for all candidates in Ohio for the 2016 presidential election up until the end of July 2015.
+
+Format
+
+A csv file with 2452 observations with 19 variables.
+
+Details:
+
+cmte_id : An internal identifier relating to the candidate.
+
+cand_id : An identification number relating to the candidate.
+
+cand_nm : The candidate name
+
+contbr_nm : The name of the contributor
+
+contbr_city : The city of the contributor
+
+contbr_st : The state of the contributor
+
+contbr_zip : The zip code of the contributor
+
+contbr_employer : The employer of the contributor
+
+contbr_occupation : The occupation of the contributor
+
+contb_receipt_amt : The amount of the contribution
+
+contb_receipt_dt : The date of the contribution
+
+receipt_desc : Receipt description
+
+memo_cd : Code for the memo (if any)
+
+memo_text : Text for the memo (if any)
+
+form_tp : The type of form used
+
+file_num : The file number the transaction was reported with.
+
+tran_id : An id number for the transaction
+
+election_tp : The type of election
