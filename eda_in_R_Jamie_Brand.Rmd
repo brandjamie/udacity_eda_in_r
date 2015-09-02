@@ -13,18 +13,24 @@
 library(ggplot2)
 library(dplyr)
 library(reshape2)
+library(scales)
 ```
 
 ```{r echo=FALSE, Load_the_Data}
 # Load the Data
+
 setwd("/home/jb/Documents/Data\ Science/udacity_eda_in_r")
-ohio <- read.csv("P00000001-OH.csv",row.names = NULL,header = TRUE, na.strings = '"')
-# Row names are incorrect due to trailing comma on every line but the headings. 
-newnames = colnames(ohio)[2:19]
+ohio <- read.csv("P00000001-OH.csv",
+                 row.names = NULL,
+                 header = TRUE, 
+                 na.strings = '"')
+
+# Row names are incorrect.
+# There is a trailing comma on every line but the headings. 
+
+newnames <- colnames(ohio)[2:19]
 ohio$election_tp <- NULL
 colnames(ohio) <- newnames
-
-
 ```
 
 ### Candidate Names (cand_nm)
@@ -32,13 +38,15 @@ colnames(ohio) <- newnames
 
 sort(table(ohio$cand_nm))
 # Changing fully capitalized factor to normal capitalization
-checkcapitalization <- function(cand_nm){
+
+check_capitalization <- function(cand_nm){
   if (cand_nm == "CRUZ, RAFAEL EDWARD TED") {
-    cand_nm = "Cruz, Rafael Edward 'Ted'"
+    cand_nm <- "Cruz, Rafael Edward 'Ted'"
   }
   return(cand_nm)
 }
-ohio$cand_nm <- apply(as.matrix(ohio$cand_nm),1,checkcapitalization)
+
+ohio$cand_nm <- apply(as.matrix(ohio$cand_nm),1,check_capitalization)
 ```
 
 There is a duplicate factor here with "CRUZ, RAFAEL EDWARD TED". I changed each instance of it to "Cruz, Rafael Edward 'Ted'" to match the rest of the dataset. 
@@ -46,10 +54,12 @@ There is a duplicate factor here with "CRUZ, RAFAEL EDWARD TED". I changed each 
 
 ### Candidate Id, File Number, and FILER ID.  (cand_id,file_nm and cmte_id)
 ```{r echo=FALSE,Clear_useless_data}
+
 # Drop unneeded collumns
 # These columns all contain or vary by the same information - the candidate
 
-# Row names, form_tp and cmte_id all correlate 100% with cand_id so removing
+# Row names, form_tp and cmte_id all correlate 100% with cand_id
+# Removing superfluous features
 sort(table(ohio$cand_nm))
 sort(table(ohio$cand_id))
 sort(table(ohio$file_num))
@@ -65,7 +75,7 @@ The cand_nm,cand_id,file_nm and cmte_id all collerate 100% so I kept the candida
 ```{r echo=FALSE,Remove_duplicate_rows}
 
 # Refers to the state. All the values are the same as this is the Ohio dataset
-# Removing
+# Removing feature
 table(ohio$contbr_st)
 ohio$contbr_st <- NULL
 ```
@@ -75,10 +85,9 @@ No need to keep the contrbr_st features as it refers to the state which is the s
 ### Election type (election_tp)
 ```{r echo=FALSE}
 # 19 Rows of donations for the general election
-# Many of these rows have reciept_texts describing a redesignation from other campaings. 
+# Many of these have reciept_texts.
+# Reciept texts describe redesignation from other campaigns. 
 table(ohio$election_tp)
-#ohio = ohio[ohio$election_tp == 'P2016',]
-
 ```
 
 Values of G2016 Appear to be contributions which have been reassigned (see Receipt_desc feature)
@@ -95,11 +104,8 @@ Details of reattribution or redesignation.
 
 ### Memo code (memo_cd)
 ```{r echo=FALSE}
-# Memo CD feature 
+# Memo_cd feature 
 table(ohio$memo_cd)
-#ohio[ohio$memo_cd == "X",]
-# Only one value fo memo_cd doesn't seem to have any meaning so removing.
-
 ```
 
 According to : 
@@ -109,7 +115,6 @@ X' indicates that the amount is NOT to be included in the itemization total.
 
 ### Memo text (memo_text)
 ```{r echo=FALSE}
-
 table(ohio$memo_text)
 ```
 
@@ -119,15 +124,13 @@ Memo_text feature: Approximately 10% of contributions are earmarked contribution
 The transaction id features was removed as it contains no useful information.
 
 ```{r echo=FALSE}
-
 ohio$tran_id <- NULL
-
 ```
 
 ### Receipt Date (contb_receipt_date)
 ```{r echo=FALSE}
-
-ohio$contb_receipt_dt <- as.Date(ohio$contb_receipt_dt,format="%d-%b-%y")
+ohio$contb_receipt_dt <- as.Date(ohio$contb_receipt_dt,
+                                 format = "%d-%b-%y")
 summary(ohio$contb_receipt_dt)
 ```
 
@@ -136,7 +139,7 @@ Data needed to be changed from string to date format.
 ### Postcode (contbr_zip)
 ```{r echo=FALSE}
 getzip <- function(zip){
-  zip = substring(zip,1,5)
+  zip <- substring(zip,1,5)
   return(zip)
 }
 ohio$contbr_zip <- apply(as.matrix(ohio$contbr_zip),1,getzip)
@@ -146,15 +149,14 @@ The zip codes were reduced to the area zip code (the first 5 characters) as the 
 
 ### Form type (form_tp)
 ```{r echo=FALSE}
-
 table(ohio$form_tp)
-
 ```
 
 The form_tp factor levels refer to the following:
-SA17A  = Contribution from individuals other than political orgnaisations
-SA18 = Transfers from other authorized commitees
-SA28A = Refunds to individuals other than political orgnaisations
+
+* SA17A  = Contribution from individuals other than political orgnaisations
+* SA18 = Transfers from other authorized commitees
+* SA28A = Refunds to individuals other than political orgnaisations
 
 As shown on this form: 
 http://www.fec.gov/finance/disclosure/metadata/DataDictionaryTransactionTypeCodes.shtml
@@ -163,34 +165,39 @@ http://www.fec.gov/finance/disclosure/metadata/DataDictionaryTransactionTypeCode
 ### Additional Candidate Information
 ```{r echo=FALSE}
 
-cands <- read.csv("candidates.csv",row.names = NULL,header = TRUE, na.strings = '"')
+cands <- read.csv("candidates.csv",
+                  row.names = NULL,
+                  header = TRUE, 
+                  na.strings = '"')
 cands
-
+# Add candidate age feature
 getage <- function(cand_nm){
-  age = cands[cands$Name == cand_nm,][1,"Age"]
+  age <- cands[cands$Name == cand_nm,][1,"Age"]
   return(age)
 }
 ohio$cand_age <- apply(as.matrix(ohio$cand_nm),1,getage)
 
-
-getgender <- function(cand_nm){
-  gender = cands[cands$Name == cand_nm,][1,"Gender"]
+# Add candidate gender feature
+get_gender <- function(cand_nm){
+  gender <- cands[cands$Name == cand_nm,][1,"Gender"]
   return(gender)
 }
-ohio$cand_gender <- apply(as.matrix(ohio$cand_nm),1,getgender)
+ohio$cand_gender <- apply(as.matrix(ohio$cand_nm),1,get_gender)
 
-getparty <- function(cand_nm){
-  party = cands[cands$Name == cand_nm,][1,"Party"]
+# Add candidate party feature
+get_party <- function(cand_nm){
+  party <- cands[cands$Name == cand_nm,][1,"Party"]
   return(party)
 }
-ohio$cand_party <- apply(as.matrix(ohio$cand_nm),1,getparty)
+ohio$cand_party <- apply(as.matrix(ohio$cand_nm),1,get_party)
 
-getsince <- function(cand_nm){
-  since = cands[cands$Name == cand_nm,][1,"Running_Since"]
+# Add candidate running since feature
+get_since <- function(cand_nm){
+  since <- cands[cands$Name == cand_nm,][1,"Running_Since"]
   return(since)
 }
-ohio$cand_since <- apply(as.matrix(ohio$cand_nm),1,getsince)
-
+ohio$cand_since <- apply(as.matrix(ohio$cand_nm),1,get_since)
+# Change running since feature to date format
 ohio$cand_since <- as.Date(ohio$cand_since,format = "%d-%m-%y")
 ```
 
@@ -199,23 +206,28 @@ As there are not a huge number of candidates I manually collated extra data abou
 ### Predicted Contributor Gender (contbr_gender)
 A predicted gender of contributor feature was created based on the contributors first name. 
 
-It was made with a free csv file of first names with genders. 
+It was made with a free csv file of first names with genders from: 
 http://tedwise.com/2011/02/08/check-the-gender-of-a-first-name
 
 This method could not predict every gen+
         coord_cartesian(ylim=c(0, 1000))der so there a number of N/A values. While the genders that are predictied may not be 100% correct they should be good enough to look for trends in the data. 
 ```{r echo=FALSE}
-names <- read.csv("names.csv",row.names = NULL,header = FALSE, na.strings = '"')
-
+# load names dataset
+names <- read.csv("names.csv",
+                  row.names = NULL,
+                  header = FALSE, 
+                  na.strings = '"')
 getcont_gender <- function(cont_nm){
-  cont_nm = strsplit(cont_nm,",")[[1]][2]
-  cont_nm = strsplit(cont_nm," ")[[1]][2]
-  gender = names[names$V1 == cont_nm,][1,2]
+  # get first name of contributer
+  cont_nm <- strsplit(cont_nm,",")[[1]][2]
+  cont_nm <- strsplit(cont_nm," ")[[1]][2]
+  # check for name in names dataset and return gender if available
+  gender <- names[names$V1 == cont_nm,][1,2]
   return(gender)
 }
 
+#get predicted gender for contributor
 ohio$contbr_gender <-  apply(as.matrix(ohio$contbr_nm),1,getcont_gender)
-
 
 table(ohio$contbr_gender)
 ```
@@ -230,15 +242,15 @@ dim(ohio)
 # Univariate Plots Section
 ### Distribution of contribution amounts
 
-```{r echo=FALSE, Univariate_Plots}
+```{r message=FALSE, echo=FALSE, Univariate_Plots}
 ggplot(ohio,aes(contb_receipt_amt)) +
          geom_histogram() 
 ```
 
-We can see there are a number of outliers on either side of the distribution. The negative values are from refunds / redesignation of donations. 
+We can see there are a number of outliers on either side of the distribution. The maximum donation is $5400 and the minimum donation is -$2700. The negative values are from refunds / redesignation of donations. The smallest donation above zero is $1. 
 We can focus on the area between 0 and 1500 dollars for more detail
 
-```{r echo=FALSE}
+```{r message=FALSE, echo=FALSE}
 ggplot(ohio,aes(contb_receipt_amt)) +
          geom_histogram() +
          scale_x_continuous(limits = c(0,1500))
@@ -249,7 +261,7 @@ And on contributions between 0 and 500 dollars
 
 ```{r echo=FALSE}
 ggplot(ohio,aes(contb_receipt_amt)) +
-         geom_histogram(binwidth =10) +
+         geom_histogram(binwidth = 10) +
          scale_x_continuous(limits = c(0,500))
 ```
 
@@ -257,18 +269,19 @@ Here we see an interesting tendency that people have to donate in 'round' number
 
 
 ### When were the contributions made? 
-It is still near the beginning of the campaigns so we can see that the number of contributions began to rise in April 2015. I expect the number of donations will continue to rise as the campaigns continue. 
+It is still near the beginning of the campaigns so we can see that the number of contributions began to rise in April 2015. I expect the number of donations will continue to rise as the campaigns continue. This is supported by the fact that the busiest day for contributions (the mode) was the 30th of June - the very last date included in the dataset. 
 
 ```{r echo=FALSE}
 ggplot(ohio,aes(contb_receipt_dt)) +
-         geom_histogram(binwidth=2) 
+         geom_histogram(binwidth = 2) 
 ```
 
 
 ### Contributions by candidate
 ```{r echo=FALSE}
 ggplot(ohio,aes(cand_nm)) +
-         geom_bar() + theme(axis.text.x = element_text(angle=90, hjust=1))
+  geom_bar() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
  
         
 ```
@@ -278,22 +291,25 @@ I am aware that a potential problem of this dataset is its incompleteness. It is
 To account for this we can look at the average number of contributions per day for each candidate. 
 
 ```{r echo=FALSE}
+# get number of days from the running date until the latest contribution
 
 ohio$runningdays <- (max(ohio$contb_receipt_dt)) - ohio$cand_since  
 ohio$runningdays <- as.numeric(ohio$runningdays, unit = "days")
 
+
+# Get average number of contributions per day. 
 contsbyday <- ohio %>% 
     group_by(cand_nm) %>%
     summarise(total = length(cand_nm),mean(runningdays))
-
 contsbyday$ave = contsbyday$total/contsbyday$`mean(runningdays)`
 
 
-ggplot(contsbyday,aes(x=cand_nm,y=ave)) + 
-         geom_bar(stat="identity") + theme(axis.text.x=element_text(angle=90, hjust=1))
+ggplot(contsbyday,aes(x = cand_nm,y = ave)) + 
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-This plot is visually similar to the total number of contributions made by candidate. While obviously we should be aware of the different starting dates for the candidates, this plot implies that it does not have a strong effect on the number of contributions made. I suspect a reason for this may be that were aware that candidates were going to announce they were running before the announcements came.   
+This plot is visually similar to the total number of contributions made by candidate. While obviously we should be aware of the different starting dates for the candidates, this plot implies that it does not have a strong effect on the number of contributions made. I suspect a reason for this may be that contributors were aware that candidates were going to announce they were running before the announcements came.   
 
 
 ### Candidates by Political party
@@ -304,7 +320,7 @@ ggplot(cands,aes(Party)) +
          geom_bar() 
 ```
 
-Clearly there are more candidates for the republican party by a wide margin. We can see from the previous plot of contributions by candidate that a number of candidates have had a very low number of contributions.  
+Clearly there are more candidates for the republican party by a wide margin. In fact there are only two candidates for the Democratic party and one Independent candidate. We can see from the previous plot of contributions by candidate that a number of candidates have had a very low number of contributions.  
 
 
 ### Contibutions by Political party
@@ -313,7 +329,7 @@ ggplot(ohio,aes(cand_party)) +
          geom_bar() 
 ```
 
-There is a much larger number of contributions to the republican party than the other parties. However, as we have already ascertained, there are more candidates for the republican party. This seems to imply that Democratic candidates (and the Independent candidate) are getting more contributions each on average. 
+There is a much larger number of contributions to the republican party than the other parties. However, as we have already ascertained, there are more candidates for the republican party. This seems to imply that Democratic candidates (and the Independent candidate) are getting more contributions each on average. We will look at this later. 
 
 ### Candidates by Age
 ```{r echo=FALSE}
@@ -349,14 +365,16 @@ ggplot(ohio,aes(contbr_city)) +
 
 This is difficult to read. Repeat with only the top twenty five cities.
 ```{r echo=FALSE}
-  
-topcities = sort(table(ohio$contbr_city),decreasing = TRUE)[1:25]
+#get top 25 cities  
+topcities <- sort(table(ohio$contbr_city),decreasing = TRUE)[1:25]
 
-tc = as.data.frame(as.matrix(topcities))
+tc <- as.data.frame(as.matrix(topcities))
 tc$names <- rownames(tc) 
 colnames(tc) <- c("Number_of_Contributions","City")
 ggplot(tc,aes(x = City,y = Number_of_Contributions)) +
-         geom_bar(stat = "identity") + theme(axis.text.x=element_text(angle=90, hjust=1))
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
 ```
 
 We can see that Cincinatti and Columbus are making the largest number of contributions. This still tells us nothing about the amounts contributed though. 
@@ -367,24 +385,29 @@ We know there are a lot of occupations so lets limit it to the top 25.
 
 ```{r echo=FALSE}
   
-topocc = sort(table(ohio$contbr_occupation),decreasing = TRUE)[1:25]
-print(topocc)
+top_occupations <- sort(table(ohio$contbr_occupation),
+               decreasing = TRUE)[1:25]
+print(top_occupations)
 ```
 
 Lets remove the 'Information Requested' factors as they tell us nothing. 
 
 ```{r echo=FALSE}
-occs = ohio[ohio$contbr_occupation != "INFORMATION REQUESTED",]
-occs = occs[occs$contbr_occupation != "",]
-occs = occs[occs$contbr_occupation != "INFORMATION REQUESTED PER BEST EFFORTS",]
+# Remove unnessesary occupations
+occs <- ohio[ohio$contbr_occupation != "INFORMATION REQUESTED",]
+occs <- occs[occs$contbr_occupation != "",]
+occs <- occs[occs$contbr_occupation != 
+               "INFORMATION REQUESTED PER BEST EFFORTS",]
+ 
+top_occupations <- sort(table(occs$contbr_occupation),
+               decreasing = TRUE)[1:25]
 
-topocc = sort(table(occs$contbr_occupation),decreasing = TRUE)[1:25]
-
-to = as.data.frame(as.matrix(topocc))
+to <- as.data.frame(as.matrix(top_occupations))
 to$names <- rownames(to) 
 colnames(to) <- c("Number_of_Contributions","Occupation")
 ggplot(to,aes(x = Occupation,y = Number_of_Contributions)) +
-         geom_bar(stat = "identity")  + theme(axis.text.x=element_text(angle=90, hjust=1))
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 
 ```
@@ -399,24 +422,25 @@ Also, since we are specifically interested in which company's employees make the
 ```{r echo=FALSE}
 
 
-occs = ohio[ohio$contbr_employer != "SELF",]
-occs = occs[occs$contbr_employer != "RETIRED",]
-occs = occs[occs$contbr_employer != "N/A",]
-occs = occs[occs$contbr_employer != "NONE",]
-occs = occs[occs$contbr_employer != "SELF-EMPLOYED",]
-occs = occs[occs$contbr_employer != "SELF EMPLOYED",]
-occs = occs[occs$contbr_employer != "NOT EMPLOYED",]
-occs = occs[occs$contbr_employer != "HOMEMAKER",]
-occs = occs[occs$contbr_employer != "INFORMATION REQUESTED PER BEST EFFORTS",]
-occs = occs[occs$contbr_employer != "INFORMATION REQUESTED",]
-occs = occs[occs$contbr_employer != "",]
-topocc = sort(table(occs$contbr_employer),decreasing = TRUE)[1:25]
+emps <- ohio[ohio$contbr_employer != "SELF",]
+emps <- emps[occs$contbr_employer != "RETIRED",]
+emps <- emps[occs$contbr_employer != "N/A",]
+emps <- emps[occs$contbr_employer != "NONE",]
+emps <- emps[occs$contbr_employer != "SELF-EMPLOYED",]
+emps <- emps[occs$contbr_employer != "SELF EMPLOYED",]
+emps <- emps[occs$contbr_employer != "NOT EMPLOYED",]
+emps <- emps[occs$contbr_employer != "HOMEMAKER",]
+emps <- emps[occs$contbr_employer != "INFORMATION REQUESTED PER BEST EFFORTS",]
+emps <- emps[occs$contbr_employer != "INFORMATION REQUESTED",]
+emps <- emps[occs$contbr_employer != "",]
+top_employers <- sort(table(occs$contbr_employer),decreasing = TRUE)[1:25]
 
-to = as.data.frame(as.matrix(topocc))
+to <- as.data.frame(as.matrix(top_employers))
 to$names <- rownames(to) 
 colnames(to) <- c("Number_of_Contributions","Employer")
 ggplot(to,aes(x = Employer,y = Number_of_Contributions)) +
-  geom_bar(stat = "identity")  + theme(axis.text.x=element_text(angle=90, hjust=1))
+  geom_bar(stat = "identity")  +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 
 ```
@@ -427,38 +451,27 @@ We can see that 'Target Corp' is one of the top employers, explaining the 'pfres
 
 ### Multiple Contributions 
 
-Does anyone contribute ore than once? Who are the top contributors
+Does anyone contribute more than once? Who are the top contributors
 
-```{r echo=FALSE}
-topcons = sort(table(ohio$contbr_nm),decreasing = TRUE)
-
-tc = as.data.frame(as.matrix(topcons))
+```{r echo=FALSE, message=FALSE}
+# plot distribution of number of contributions made
+top_contributors <- sort(table(ohio$contbr_nm),decreasing = TRUE)
+tc <- as.data.frame(as.matrix(top_contributors))
 tc$names <- rownames(tc) 
 colnames(tc) <- c("Number_of_Contributions","Contributor")
 ggplot(tc,aes(Number_of_Contributions)) +
          geom_histogram()  
 
+# get eight top contributors
+top_contributors <- sort(table(ohio$contbr_nm),
+                        decreasing = TRUE)[1:8]
 
-
-
-
-
-
-
-
-
-
-
-topcons = sort(table(ohio$contbr_nm),decreasing = TRUE)[1:8]
-
-
-
-
-tc = as.data.frame(as.matrix(topcons))
+tc <- as.data.frame(as.matrix(top_contributors))
 tc$names <- rownames(tc) 
 colnames(tc) <- c("Number_of_Contributions","Contributor")
 ggplot(tc,aes(x = Contributor,y = Number_of_Contributions)) +
-         geom_bar(stat = "identity") + theme(axis.text.x=element_text(angle=90, hjust=1))
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 
 ```
@@ -501,17 +514,14 @@ For a number of factorial features, there were too many factors to be plotted we
 Who has recieved the highest total of contributions so far?
 
 ```{r echo=FALSE}
+# get summary of the total amounts recieved by each candidate
+top_cands <- group_by(ohio,cand_nm)
+top_cands <- summarize(top_cands,sum(contb_receipt_amt))
 
-topcands <- group_by(ohio,cand_nm)
-topcands <- summarize(topcands,sum(contb_receipt_amt))
-
-colnames(topcands) <- c("Candidate","Total_Amount")
-ggplot(topcands,aes(x = Candidate,y = Total_Amount)) +
+colnames(top_cands) <- c("Candidate","Total_Amount")
+ggplot(top_cands,aes(x = Candidate,y = Total_Amount)) +
   geom_bar(stat = "identity") +
   coord_flip()
-
-
-
 ```
 
 Hilary Clinton has received the highest amount in contributions so far. The plot here shows seven of the candidates getting much more in contributions than the others. This mirrors the plot in the previous section showing number of contributions by candidate. 
@@ -521,26 +531,28 @@ Which candidates are getting the largest donations?
 
 ```{r echo=FALSE}
 ggplot(ohio,aes(x = cand_nm,y = contb_receipt_amt)) +
-   geom_jitter(stat = "identity",alpha = 0.5, position = position_jitter(width = .1)) +
-  coord_cartesian(ylim = c(0, 6000)) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+   geom_jitter(stat = "identity",
+               alpha = 0.5,
+               position = position_jitter(width = .1)) +
+  coord_cartesian(ylim = c(0, 6000)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-This seems to show Jeb Bush and Ted Cruz getting the contributions of the largest size. Though, even with jitter and alpha, it is difficult to compare the number and distributions made to each candidate. 
+This seems to show Jeb Bush and Ted Cruz getting the contributions of the largest size. Though, even with jitter and alpha, it is difficult to compare the number and distributions made to each candidate. If we check the data we can confirm that the maximum contributions to both Jeb Bush and Ted Crez are $5400, which is the maximum contribution amount in the dataset. 
 
-
-We can also look at the mean donation amounts by candidate.
+We can also look at the mean contribution amounts by candidate.
 
 ```{r echo=FALSE}
-meansbycand = group_by(ohio,cand_nm) %>%
+# get summary with mean for each candidate
+means_by_cand <- group_by(ohio,cand_nm) %>%
   summarise(cont_mean = mean(contb_receipt_amt))
 
-
-ggplot(meansbycand,aes(x = cand_nm,y = cont_mean)) +
+ggplot(means_by_cand,aes(x = cand_nm,y = cont_mean)) +
   geom_bar(stat = "identity") + 
   coord_flip()
 ```
 
-There is a wide variation between the means of the different candidates and this is something we will have to look at more. 
+There is a wide variation between the means of the different candidates and this is something we will have to look at more. We should remember that Martin O'Malley has only 5 contributions and Rick James, only 1. The high value of mean contribution doesn't really say much as any further contributions would have a very high affect on the mean. 
 
 Does the distribution of the contribution amount vary by candidate?
 
@@ -559,14 +571,17 @@ Obviously there is a lot of variation there. I want to know what is causing this
 ### Contribution amount by party
 First let's check the mean, mode and median of contribution amounts by each party. 
 ```{r echo=FALSE}
-getMode <- function(x) {
+#return the mode of a vector
+get_mode <- function(x) {
   ux <- unique(x)
   ux[which.max(tabulate(match(x, ux)))]
 }
 
-
+#summarise with the mean, mode and median of donations to each party
 meanbyparty <- group_by(ohio,cand_party) %>%
-  summarise(cont_mean = mean(contb_receipt_amt),cont_mode = getMode(contb_receipt_amt), median = median(contb_receipt_amt))
+  summarise(cont_mean = mean(contb_receipt_amt),
+            cont_mode = get_mode(contb_receipt_amt), 
+            median = median(contb_receipt_amt))
 
 meanbyparty
 ```
@@ -584,14 +599,17 @@ ggplot(meanbyparty,aes(x = cand_party,y = cont_mean)) +
 It is interesting to compare the mean, to the number of contributions by party (in the previous section) and the total amount contributed to each party.
 
 ```{r echo=FALSE}
-totalbyparty <- ohio %>% group_by(cand_party) %>% summarize(total = sum(contb_receipt_amt))
+# Summarize with the total ammount for each party
+totalbyparty <- ohio %>% 
+  group_by(cand_party) %>% 
+  summarize(total = sum(contb_receipt_amt))
 
-ggplot(totalbyparty,aes(x=cand_party,y=total)) +
+ggplot(totalbyparty,aes(x = cand_party,y = total)) +
   geom_bar(stat = "identity") 
 
 ```
 
-The Rupublican party have a much higher number of contributions, however the Democratic party have a much higher mean value. The total contributions for the two parties are relatively close. 
+The Republican party have a much higher number of contributions, however the Democratic party have a much higher mean value. The total contributions for the two parties are relatively close. 
 
 
 I want to look at the distribution of the amounts by party. 
@@ -607,7 +625,7 @@ Let's look at that again without so many outliers
 ```{r echo=FALSE}
 ggplot(ohio,aes(x = cand_party,y = contb_receipt_amt)) +
         geom_boxplot() +
-        coord_cartesian(ylim=c(0, 700))
+        coord_cartesian(ylim = c(0, 700))
 ```
 
 There does seem to be a noticable difference in the distribution of Democratic and Republican contributions here. There is only one independent candidate so we should take care comparing that distribution to the others. 
@@ -621,7 +639,7 @@ ggplot(ohio,aes(x = contb_receipt_amt)) +
         facet_wrap(~cand_party)
 ```
 
-From this plot it seems that there is as much difference in the distributions as first thought. The difference in the box plot could be due to the much higher number of contributions made to the Rupublican party overall. 
+From this plot it seems that there is as much difference in the distributions as first thought. The difference in the box plot could be due to the much higher number of contributions made to the Republican party overall. 
 
 Let's change the bin size. 
 
@@ -637,55 +655,56 @@ The distributions still seem simlar but we can see that the democratic contribut
 
 Let's try a third way of looking at this. 
 
-```{r echo = FALSE}
-amounts = ohio[ohio$contb_receipt_amt > 0,]
+```{r echo=FALSE}
+# Remove contribution amounts less than zero
+amounts <- ohio[ohio$contb_receipt_amt > 0,]
 
-
+# Get quantile information for 20,40,60 and 80 %
 quans <- quantile(amounts$contb_receipt_amt,c(.2,.4,.6,.8,1))
 
+# Function takes the ammount of the contribution
+# and returns a string saying which quantile bracket it is in. 
 getquans <- function(amt){
-  quant = NA
+  quant <- NA
   if (amt <= quans[1]) {
-    quant = paste0("0%($0) to 20%($",quans[1],")")
+    quant <- paste0("0%($0) to 20%($",quans[1],")")
   } 
   else if (amt > quans[1] && amt <= quans[2]) {
-    quant = paste0("20%($",quans[1],") to 40%($",quans[2],")")
+    quant <- paste0("20%($",quans[1],") to 40%($",quans[2],")")
   } 
   else if (amt > quans[2] && amt <= quans[3]) {
-    quant = paste0("40%($",quans[2],") to 60%($",quans[3],")")
+    quant <- paste0("40%($",quans[2],") to 60%($",quans[3],")")
   } 
   else if (amt > quans[3] && amt <= quans[4]) {
-    quant = paste0("60%($",quans[3],") to 80%($",quans[4],")")
+    quant <- paste0("60%($",quans[3],") to 80%($",quans[4],")")
   } 
   else {
-    quant = paste0("80%($",quans[4],") to 100%($",quans[5],")")
+    quant <- paste0("80%($",quans[4],") to 100%($",quans[5],")")
   } 
   
   return(quant)
 }
+# Create new feature showing the quantile bracket the contribution falls into. 
 ohio$amtquan <- apply(as.matrix(ohio$contb_receipt_amt),1,getquans)
 
 
-ggplot(ohio,aes(x = cand_party,fill = cand_party))+
+ggplot(ohio,aes(x = cand_party,fill = cand_party)) +
   geom_bar() + 
-  facet_wrap (~ amtquan)
+  facet_wrap(~amtquan)
 
 ```
 
-Once again, we are finding a difference in the distribution. This time much more pronounced. The rupublican party is getting more donations in the center of the distribution while the democratic party are getting less contributions in the center but more at the top and bottom 20% of contribution amount. 
+Once again, we are finding a difference in the distribution. This time much more pronounced. The republican party is getting more donations in the center of the distribution while the democratic party are getting less contributions in the center but more at the top and bottom 20% of contribution amount. 
 
 
 ### Contribution amount by time
 
 ```{r echo=FALSE}
 
-ggplot(ohio[order(ohio$contb_receipt_dt),],aes(x = contb_receipt_dt, y= cumsum(contb_receipt_amt))) +
-         geom_line()
-        
-
-
-
-
+ggplot(ohio[order(ohio$contb_receipt_dt),],
+       aes(x = contb_receipt_dt, 
+           y = cumsum(contb_receipt_amt))) +
+  geom_line()
 ```
 
 Nothing really surprising here. 
@@ -697,32 +716,27 @@ Nothing really surprising here.
 Here are the 25 most common occupations in our dataset, the number of total contributions each occupation has made and which party the contributions were for. 
 
 ```{r echo=FALSE}
-
-# Remove unnessesary occupations
-occs = ohio[ohio$contbr_occupation != "INFORMATION REQUESTED",]
-occs = occs[occs$contbr_occupation != "",]
-occs = occs[occs$contbr_occupation != "INFORMATION REQUESTED PER BEST EFFORTS",]
-
-
 #get df with top 25 occupations
-topocc = sort(table(occs$contbr_occupation),decreasing = TRUE)[1:25]
-occs = ohio[ohio$contbr_occupation %in% rownames(topocc),]
+occs <- ohio[ohio$contbr_occupation %in% rownames(top_occupations),]
 ## group by occupation and party
 occbyparty <- occs %>% 
-    group_by(contbr_occupation,cand_party) %>% summarise(num = length(contbr_occupation))
+  group_by(contbr_occupation,cand_party) %>%
+  summarise(num = length(contbr_occupation))
 
 ## changed to wide format
-occs <- dcast(occbyparty, contbr_occupation + num ~ cand_party,value.var = "num")
+occs <- dcast(occbyparty, 
+              contbr_occupation + num ~ cand_party,
+              value.var = "num")
 
-## group by contbr occupation again (there must be a better way of doing this)
+## group by contbr occupation
 occbyparty <- occs %>% 
     group_by(contbr_occupation) %>%   
-    summarise(dem = sum(Democratic,na.rm = TRUE),ind = sum(Independent,na.rm = TRUE),rep = sum(Republican,na.rm = TRUE))
+    summarise(dem = sum(Democratic,na.rm = TRUE),
+              ind = sum(Independent,na.rm = TRUE),
+              rep = sum(Republican,na.rm = TRUE))
 
 # as.data.frame needed to print every row in html
 as.data.frame(occbyparty)
-
-
 ```
 
 Here is a chart showing the percentage of each occupations contributions to each party. 
@@ -730,19 +744,15 @@ Here is a chart showing the percentage of each occupations contributions to each
 ```{r echo=FALSE}
 # add total and percentages to each column.
 occbyparty$total <- occbyparty$dem + occbyparty$ind + occbyparty$rep
-
-
 occbyparty$dem <- (occbyparty$dem/occbyparty$total)*100
-
 occbyparty$ind <- (occbyparty$ind/occbyparty$total)*100
-
 occbyparty$rep <- (occbyparty$rep/occbyparty$total)*100
-
 occbyparty$total <- NULL
 
+# convert to long form data
 occ <- melt(occbyparty, id.vars = "contbr_occupation")
 
-ggplot(occ,aes(x = contbr_occupation,y = value,fill = variable))+
+ggplot(occ,aes(x = contbr_occupation,y = value,fill = variable)) +
   geom_bar(stat = "identity") +
   coord_flip()
 ```
@@ -752,36 +762,26 @@ There is a lot of variation by occupation. Some occupations, such as physicians,
 ### How Employers vary by contributions to each Party
 
 ```{r echo=FALSE}
-
-occs = ohio[ohio$contbr_employer != "SELF",]
-occs = occs[occs$contbr_employer != "RETIRED",]
-occs = occs[occs$contbr_employer != "N/A",]
-occs = occs[occs$contbr_employer != "NONE",]
-occs = occs[occs$contbr_employer != "SELF-EMPLOYED",]
-occs = occs[occs$contbr_employer != "SELF EMPLOYED",]
-occs = occs[occs$contbr_employer != "NOT EMPLOYED",]
-occs = occs[occs$contbr_employer != "HOMEMAKER",]
-occs = occs[occs$contbr_employer != "INFORMATION REQUESTED PER BEST EFFORTS",]
-occs = occs[occs$contbr_employer != "INFORMATION REQUESTED",]
-occs = occs[occs$contbr_employer != "",]
-#get df with top 25 occupations
-topocc = sort(table(occs$contbr_employer),decreasing = TRUE)[1:25]
-
-occs = ohio[ohio$contbr_employer %in% rownames(topocc),]
+emps <- ohio[ohio$contbr_employer %in% rownames(top_employers),]
 ## group by employer and party
-occbyparty <- occs %>% 
-    group_by(contbr_employer,cand_party) %>% summarise(num=length(contbr_employer))
+empsbyparty <- emps %>% 
+  group_by(contbr_employer,cand_party) %>%
+  summarise(num = length(contbr_employer))
 
 ## changed to wide format
-occs <- dcast(occbyparty, contbr_employer + num ~ cand_party,value.var="num")
+emps <- dcast(empsbyparty,
+              contbr_employer + num ~ cand_party,
+              value.var = "num")
 
-## group by contbr employer again (there must be a better way of doing this)
-occbyparty <- occs %>% 
+## group by contbr employer 
+empsbyparty <- emps %>% 
     group_by(contbr_employer) %>%   
-    summarise(dem=sum(Democratic,na.rm=TRUE),ind = sum(Independent,na.rm=TRUE),rep=sum(Republican,na.rm=TRUE))
+    summarise(dem = sum(Democratic,na.rm = TRUE),
+              ind = sum(Independent,na.rm = TRUE),
+              rep = sum(Republican,na.rm = TRUE))
 
 # as.data.frame needed to print every row in html
-as.data.frame(occbyparty)
+as.data.frame(empsbyparty)
 
 
 ```
@@ -790,21 +790,18 @@ Here is a chart showing the percentage of contributions to each party from emplo
 
 ```{r echo=FALSE}
 # add total and percentages to each column.
-occbyparty$total <- occbyparty$dem + occbyparty$ind + occbyparty$rep
+empsbyparty$total <- empsbyparty$dem + empsbyparty$ind + empsbyparty$rep
+empsbyparty$dem <- (empsbyparty$dem/empsbyparty$total)*100
+empsbyparty$ind <- (empsbyparty$ind/empsbyparty$total)*100
+empsbyparty$rep <- (empsbyparty$rep/empsbyparty$total)*100
 
+empsbyparty$total <- NULL
 
-occbyparty$dem <- (occbyparty$dem/occbyparty$total)*100
+# convert to long form data
+emps <- melt(empsbyparty, id.vars = "contbr_employer")
 
-occbyparty$ind <- (occbyparty$ind/occbyparty$total)*100
-
-occbyparty$rep <- (occbyparty$rep/occbyparty$total)*100
-
-occbyparty$total <- NULL
-
-occ <- melt(occbyparty, id.vars = "contbr_employer")
-
-ggplot(occ,aes(x = contbr_employer,y=value,fill=variable))+
-  geom_bar(stat="identity") +
+ggplot(emps,aes(x = contbr_employer,y = value,fill = variable)) +
+  geom_bar(stat = "identity") +
   coord_flip()
 ```
 
@@ -816,46 +813,40 @@ Here is a the same chart, this time showing the percentage of contributions to e
 
 ```{r echo=FALSE}
 
-#get df with top 25 occupations
-topc = sort(table(ohio$contbr_city),decreasing = TRUE)[1:25]
+#get df with top 25 cities
 
-cities = ohio[ohio$contbr_city %in% rownames(topc),]
-
-gender <- ohio[!is.na(ohio$contbr_gender),] %>% 
-  group_by(contbr_gender,cand_gender) %>% 
-  summarise(count=n()) %>% 
-  mutate(perc=count/sum(count))
-
-
+cities <- ohio[ohio$contbr_city %in% rownames(topcities),]
 
 ## group by employer and party
 citiesbyparty <- cities %>% 
-    group_by(contbr_city,cand_party) %>% summarise(num=length(contbr_city))
+  group_by(contbr_city,cand_party) %>%
+  summarise(num = length(contbr_city))
 
 ## changed to wide format
-cities <- dcast(citiesbyparty, contbr_city + num ~ cand_party,value.var="num")
+cities <- dcast(citiesbyparty, 
+                contbr_city + num ~ cand_party,
+                value.var = "num")
 
-## group by contbr employer again (there must be a better way of doing this)
+## group by contbr employer
 citiesbyparty <- cities %>% 
     group_by(contbr_city) %>%   
-    summarise(dem=sum(Democratic,na.rm=TRUE),ind = sum(Independent,na.rm=TRUE),rep=sum(Republican,na.rm=TRUE))
+    summarise(dem = sum(Democratic,na.rm = TRUE),
+              ind = sum(Independent,na.rm = TRUE),
+              rep = sum(Republican,na.rm = TRUE))
 
 # add total and percentages to each column.
 citiesbyparty$total <- citiesbyparty$dem + citiesbyparty$ind + citiesbyparty$rep
-
-
 citiesbyparty$dem <- (citiesbyparty$dem/citiesbyparty$total)*100
-
 citiesbyparty$ind <- (citiesbyparty$ind/citiesbyparty$total)*100
-
 citiesbyparty$rep <- (citiesbyparty$rep/citiesbyparty$total)*100
-
+# remove total as no longer neccesary
 citiesbyparty$total <- NULL
 
+#change to long format data
 cities <- melt(citiesbyparty, id.vars = "contbr_city")
 
-ggplot(cities,aes(x = contbr_city,y=value,fill=variable))+
-  geom_bar(stat="identity") +
+ggplot(cities,aes(x = contbr_city,y = value,fill = variable)) +
+  geom_bar(stat = "identity") +
   coord_flip()
 
 ```
@@ -867,25 +858,22 @@ Again, there is a lot of variety between the cities with some cities contributin
 Do genders contribute differently? 
 
 ```{r echo=FALSE}
-
-
-ggplot(ohio[!is.na(ohio$contbr_gender),],aes(contbr_gender, fill=cand_party)) +
+ggplot(ohio[!is.na(ohio$contbr_gender),],aes(contbr_gender, fill = cand_party)) +
   geom_bar()
-
-
 ```
 It definitely seems like women are voting more (proportianatly) for democratic candidates and less for republican candidates than men. There may be another factor at work here though. First let's look at the same data as percentages to make it easier to compare. 
 
 ```{r echo=FALSE}
+# Summarize contributions made to each party by gender
 gender <- ohio[!is.na(ohio$contbr_gender),] %>% 
   group_by(contbr_gender,cand_party) %>% 
-  summarise(count=n()) %>% 
-  mutate(perc=count/sum(count))
+  summarise(count = n()) %>% 
+  mutate(perc = count/sum(count))
 
 
 
-ggplot(gender,aes(contbr_gender, y=perc*100, fill=cand_party)) +
-  geom_bar(stat="identity")
+ggplot(gender,aes(contbr_gender, y = perc*100, fill = cand_party)) +
+  geom_bar(stat = "identity")
 
 ```
 
@@ -894,16 +882,15 @@ Now, the current most popular Democratic party candidate is a woman. It is possi
 
 
 ```{r echo=FALSE}
-
+# Summarize contributions made to each candidate 
+# by gender of contributor and gender of candidate
 gender <- ohio[!is.na(ohio$contbr_gender),] %>% 
   group_by(contbr_gender,cand_gender) %>% 
-  summarise(count=n()) %>% 
-  mutate(perc=count/sum(count))
+  summarise(count = n()) %>% 
+  mutate(perc = count/sum(count))
 
-
-
-ggplot(gender,aes(contbr_gender, y=perc*100, fill=cand_gender)) +
-  geom_bar(stat="identity")
+ggplot(gender,aes(contbr_gender, y = perc*100, fill = cand_gender)) +
+  geom_bar(stat = "identity")
 ```
 
 It certainly seems possible that female contributors are more likely to vote for female candidates but it is impossible to test. We cannot be sure if female contributors are contributing for the democratic candidate because she is female or they are contributing for the female candidate because she is democratic. 
@@ -913,45 +900,38 @@ I would like to mention that I am looking at the effect of female candidates sim
 
 
 Let's look at which how many contributions each candidate recieved from each gender. 
-```{r echo = FALSE}
-
+```{r echo=FALSE}
+# Summarize contributions made to each candidate by gender
 gender <- ohio[!is.na(ohio$contbr_gender),] %>% 
   group_by(contbr_gender,cand_nm) %>% 
-  summarise(count=n())
+  summarise(count = n())
 
 
-ggplot(gender,aes(x=cand_nm, y= count, fill = contbr_gender)) +
-  geom_bar(stat="identity")+
+ggplot(gender,aes(x = cand_nm, y = count, fill = contbr_gender)) +
+  geom_bar(stat = "identity") +
   coord_flip()
 
 ```
 
 That will be easier to compare if we use percentages. 
-```{r echo = FALSE}
-
-gender <- ohio[!is.na(ohio$contbr_gender),] %>% 
-  group_by(contbr_gender,cand_nm) %>% 
-  summarise(count=n()) 
-
+```{r echo=FALSE}
+# remove na's from contributor gender
 totals <- table(ohio[!is.na(ohio$contbr_gender),]$cand_nm)
 
-
-gettotal <- function(cand_nm){
-  total = as.numeric(totals[cand_nm])
+# get total number of contributions for each candidate
+get_total <- function(cand_nm){
+  total <- as.numeric(totals[cand_nm])
   return(total)
 }
-gender$total <- apply(as.matrix(gender$cand_nm),1,gettotal)
+gender$total <- apply(as.matrix(gender$cand_nm),1,get_total)
 
-
-
-
-ggplot(gender,aes(x=cand_nm, y= (count/total)*100, fill = contbr_gender)) +
-  geom_bar(stat="identity")+
+ggplot(gender,aes(x = cand_nm, y = (count/total)*100, fill = contbr_gender)) +
+  geom_bar(stat = "identity") +
   coord_flip()
 
 ```
 
-While it certainly looks like some candidates are radically preferred by a specific gender, it is important to remember that some candidates have a very low number of contributions so in fact the first plot is actually more usefull. 
+While it certainly looks like some candidates are radically preferred by a specific gender, it is important to remember that some candidates have a very low number of contributions. Rick James, and Bobby Jindal both only have one candidate so they must have 100% contributions from one gender. Keeping this in mind, I feel the previous plot is actually more useful. 
 
 
 ### Looking a bit more at the amount of the contributions
@@ -959,31 +939,29 @@ While it certainly looks like some candidates are radically preferred by a speci
 What is the mean contribution amount by occupation?
 
 ```{r echo=FALSE}
-occs = ohio[ohio$contbr_occupation != "INFORMATION REQUESTED",]
-occs = occs[occs$contbr_occupation != "",]
-occs = occs[occs$contbr_occupation != "INFORMATION REQUESTED PER BEST EFFORTS",]
-topocc = sort(table(occs$contbr_occupation),decreasing = TRUE)[1:25]
-meancontrib = ohio[ohio$contbr_occupation %in% rownames(topocc),] %>% 
-    group_by(contbr_occupation) %>%   
-    summarise(mean_contrib = mean(contb_receipt_amt))
+# Summarize mean contribution by occupation
+meancontrib <- ohio[ohio$contbr_occupation %in%
+                     rownames(top_occupations),] %>%
+  group_by(contbr_occupation) %>%
+  summarise(mean_contrib = mean(contb_receipt_amt))
 
 ggplot(meancontrib,aes(x = contbr_occupation, y = mean_contrib)) +
-  geom_bar(stat="identity") +
+  geom_bar(stat = "identity") +
   coord_flip()
 ```
 
 This is surprisingly close to what I'd expect with the occupations I'd imagine being better paid making larger contributions. 
 
-Let's look at the mean amount by city. 
+Let's look at the mean amount by city.
+
 ```{r echo=FALSE}
 
-topcities = sort(table(ohio$contbr_city),decreasing = TRUE)[1:25]
-
-cities = ohio[ohio$contbr_city %in% rownames(topcities),] %>%     group_by(contbr_city) %>%   
+# Summarize mean contribution amount by city
+cities <- ohio[ohio$contbr_city %in% rownames(topcities),] %>%     group_by(contbr_city) %>%   
     summarise(mean_contrib = mean(contb_receipt_amt))
 
 ggplot(cities,aes(x = contbr_city, y = mean_contrib)) +
-  geom_bar(stat="identity") +
+  geom_bar(stat = "identity") +
   coord_flip()
 ```
 
@@ -993,12 +971,13 @@ I suspect that looking at the mean amount donated by gender won't reveal much, b
 
 
 ```{r echo=FALSE}
-gender = ohio[!is.na(ohio$contbr_gender),] %>%    
+# Summarize mean amount by gender
+gender <- ohio[!is.na(ohio$contbr_gender),] %>%    
     group_by(contbr_gender) %>%   
     summarise(mean_contrib = mean(contb_receipt_amt))
 
 ggplot(gender,aes(x = contbr_gender, y = mean_contrib)) +
-  geom_bar(stat="identity")
+  geom_bar(stat = "identity")
 
 ```
 
@@ -1028,21 +1007,26 @@ The relationship between employer and candidate party was very strong but ultima
 # Multivariate Plots Section
 ### Amount of contributions by candidate and party 
 
-```{r echo=FALSE, Multivariate_Plots}
+```{r echo=FALSE, warning=FALSE, Multivariate_Plots}
 ggplot(ohio,aes(x = cand_nm,y = contb_receipt_amt)) +
-   geom_jitter(aes(color = cand_party),stat = "identity",alpha = 0.25, position = position_jitter(width = .3)) +
+  geom_jitter(aes(color = cand_party),
+               stat = "identity",
+               alpha = 0.25, 
+               position = position_jitter(width = .3)) +
   scale_y_continuous(limits = c(0, 6000)) +
-coord_flip()
+  coord_flip()
 ```
 
 We can add candidate party information to this plot to see if there are any interesting patterns. However, as with previously, this plot is difficult to read with a catagorical x-axis that has a large number of factors. 
 
-We can also look at the mean donation amounts by candidate.
+We can also look at the mean contribution amounts by candidate.
 
 ```{r echo=FALSE}
-meansbycand$party <- apply(as.matrix(meansbycand$cand_nm),1,getparty)
+# add the party feature to the means_by_cand
+# summary of mean amount by candidate
+means_by_cand$party <- apply(as.matrix(means_by_cand$cand_nm),1,get_party)
 
-ggplot(meansbycand,aes(x = cand_nm,y = cont_mean,fill = party)) +
+ggplot(means_by_cand,aes(x = cand_nm,y = cont_mean,fill = party)) +
   geom_bar(stat = "identity") + 
   coord_flip()
 ```
@@ -1054,28 +1038,33 @@ Looking back to the differences in mean amount of contribution for each party, i
 
 We can look at the gender of the contributors and whether they are contributing more or less to each candidate. 
 
-```{r echo=FALSE}
-ggplot(ohio[!is.na(ohio$contbr_gender),],aes(x=cand_nm,y=contb_receipt_amt)) +
-   geom_jitter(aes(color=contbr_gender),stat = "identity",alpha = 0.25, position = position_jitter(width = .3))+
-  scale_y_continuous(limits=c(0, 3000))+
-coord_flip()
+```{r echo=FALSE, warning=FALSE}
+ggplot(ohio[!is.na(ohio$contbr_gender),],
+       aes(x = cand_nm, y = contb_receipt_amt)) +
+  geom_jitter(aes(color = contbr_gender),
+               stat = "identity",
+               alpha = 0.25, 
+               position = position_jitter(width = .3)) +
+  scale_y_continuous(limits = c(0, 3000)) +
+  coord_flip()
 
 ```
 This plot has the same problems as the other point plots here. It is difficult to see any patterns, even with using a low alpha value and position jitter. If we look to the right of the graph, however, we can see that Hilary Clinton is getting a lot more high value donations from women than the other candidates. 
-
-
-
 
 ### Amount of contributions over time. 
 
 We can look at the total amount of contributions by party over time. 
 ```{r echo=FALSE}
+# create a cummulative amount by party feature
+ohio <- ohio[order(ohio$contb_receipt_dt),]
+ohio$party_cumulative <- ave(ohio$contb_receipt_amt,
+                             ohio$cand_party,
+                             FUN = cumsum) 
 
-ohio = ohio[order(ohio$contb_receipt_dt),]
-ohio$party_cumulative <-ave(ohio$contb_receipt_amt,ohio$cand_party,FUN=cumsum) 
-
-ggplot(ohio[order(ohio$contb_receipt_dt),],aes(x = contb_receipt_dt, y= party_cumulative,color = cand_party)) +
-         geom_line()
+ggplot(ohio[order(ohio$contb_receipt_dt),],
+       aes(x = contb_receipt_dt, 
+           y = party_cumulative,color = cand_party)) +
+  geom_line()
 
 ```
 
@@ -1084,11 +1073,18 @@ From this we can see the total amount contributed to each party is accumulating 
 We can also look at the amount contributed to each candidate by time. 
 
 ```{r echo=FALSE}
-ohio = ohio[order(ohio$contb_receipt_dt),]
-ohio$cand_cumulative <-ave(ohio$contb_receipt_amt,ohio$cand_nm,FUN=cumsum) 
 
-ggplot(ohio[order(ohio$contb_receipt_dt),],aes(x = contb_receipt_dt, y= cand_cumulative,color = cand_nm)) +
-         geom_line()
+# create a cummulative amount by candidate feature
+ohio = ohio[order(ohio$contb_receipt_dt),]
+ohio$cand_cumulative <- ave(ohio$contb_receipt_amt,
+                            ohio$cand_nm,
+                            FUN = cumsum) 
+
+ggplot(ohio[order(ohio$contb_receipt_dt),],
+       aes(x = contb_receipt_dt, 
+           y = cand_cumulative,
+           color = cand_nm)) +
+  geom_line()
 
 ```
 
@@ -1098,7 +1094,10 @@ We can limit the x-axis to March onwards for more detail.
 ```{r echo=FALSE}
 
 
-ggplot(ohio[order(ohio$contb_receipt_dt),],aes(x = contb_receipt_dt, y= cand_cumulative,color = cand_nm)) +
+ggplot(ohio[order(ohio$contb_receipt_dt),],
+       aes(x = contb_receipt_dt, 
+           y = cand_cumulative,
+           color = cand_nm)) +
          geom_line() +
 scale_x_date(limits = as.Date(c('2015-03-01','2015-07-01')))
 
@@ -1112,8 +1111,8 @@ As candidates anounced their candidancy at different times, we can adjust the pl
 
 ###total amt / cand / runningdays
 
-```{r echo = FALSE}
-
+```{r echo=FALSE}
+# add a feature for the number of days between running since and the contribution
 ohio$runingDaysAtCont <- as.numeric(ohio$contb_receipt_dt - ohio$cand_since)
 
 ggplot(ohio[order(ohio$runingDaysAtCont),],aes(x = runingDaysAtCont, y = cand_cumulative,color = cand_nm)) +
@@ -1128,16 +1127,13 @@ In fact there is not a lot of difference between this and the previous plot. We 
 
 
 ```{r echo=FALSE}
-getTopN <- function(feature,n) {
-  return(sort(table(feature),decreasing = TRUE)[1:n])
-}
-
-topcities = getTopN(ohio$contbr_city,25)
-cities = ohio[ohio$contbr_city %in% rownames(topcities),]
+# get the top cities
+cities <- ohio[ohio$contbr_city %in% rownames(topcities),]
 
 # group by occupation and party
 citiesbyparty <- cities %>% 
-    group_by(contbr_city,cand_party) %>% summarise(num = sum(contb_receipt_amt))
+  group_by(contbr_city,cand_party) %>% 
+  summarise(num = sum(contb_receipt_amt))
 
 
 # changed to wide format
@@ -1146,14 +1142,16 @@ cities <- dcast(citiesbyparty, contbr_city + num ~ cand_party,value.var = "num")
 # group by contbr occupation again
 cities <- cities %>% 
     group_by(contbr_city) %>%   
-    summarise(dem = sum(Democratic,na.rm = TRUE),ind = sum(Independent,na.rm = TRUE),rep = sum(Republican,na.rm = TRUE))
+    summarise(dem = sum(Democratic,na.rm = TRUE),
+              ind = sum(Independent,na.rm = TRUE),
+              rep = sum(Republican,na.rm = TRUE))
 
+# change back to long format
 cities <- melt(cities, id.vars = "contbr_city")
 
 ggplot(cities,aes(x = contbr_city,y = value,fill = variable)) +
   geom_bar(stat = "identity") +
-  coord_flip() + 
- scale_fill_manual(values = c("blue", "white", "red"))
+  coord_flip()
 
 
 ```
@@ -1163,42 +1161,36 @@ We did look at the percentage of contributions to each party previously and it w
 ### Differences in amount given by different occupations to each party.
 
 
-```{r echo = FALSE}
+```{r echo=FALSE}
 
-# Remove unnessesary occupations
-occs = ohio[ohio$contbr_occupation != "INFORMATION REQUESTED",]
-occs = occs[occs$contbr_occupation != "",]
-occs = occs[occs$contbr_occupation != "INFORMATION REQUESTED PER BEST EFFORTS",]
+
 
 
 #get df with top 25 occupations
-topocc = sort(table(occs$contbr_occupation),decreasing = TRUE)[1:25]
-occs = ohio[ohio$contbr_occupation %in% rownames(topocc),]
+occs <- ohio[ohio$contbr_occupation %in% rownames(top_occupations),]
 ## group by occupation and party
 occbyparty <- occs %>% 
-    group_by(contbr_occupation,cand_party) %>% summarise(num = sum(contb_receipt_amt))
+  group_by(contbr_occupation,cand_party) %>%
+  summarise(num = sum(contb_receipt_amt))
 
 ## changed to wide format
-occs <- dcast(occbyparty, contbr_occupation + num ~ cand_party,value.var = "num")
+occs <- dcast(occbyparty,
+              contbr_occupation + num ~ cand_party,
+              value.var = "num")
 
-## group by contbr occupation again (there must be a better way of doing this)
+## group by contbr occupation again 
 occbyparty <- occs %>% 
     group_by(contbr_occupation) %>%   
-    summarise(dem = sum(Democratic,na.rm = TRUE),ind = sum(Independent,na.rm = TRUE),rep = sum(Republican,na.rm = TRUE))
+    summarise(dem = sum(Democratic,na.rm = TRUE),
+              ind = sum(Independent,na.rm = TRUE),
+              rep = sum(Republican,na.rm = TRUE))
 
-
-
-# add total and percentages to each column.
-
-
+# change back to long format
 occ <- melt(occbyparty, id.vars = "contbr_occupation")
-
-
 
 ggplot(occ,aes(x = contbr_occupation,y = value,fill = variable)) +
   geom_bar(stat = "identity") +
-  coord_flip() + 
- scale_fill_manual(values = c("blue", "white", "red"))
+  coord_flip() 
 
 ```
 
@@ -1206,10 +1198,13 @@ This really combines the information in our previous plots looking at occupation
 
 ###Distribution of amount by candidate and party
 
-```{r}
-ggplot(ohio,aes(x = cand_nm,y = contb_receipt_amt,fill=cand_party)) +
-        geom_boxplot() +
-        coord_flip(ylim=c(0, 3000)) 
+```{r echo=FALSE}
+ggplot(ohio,
+       aes(x = cand_nm,
+           y = contb_receipt_amt,
+           fill = cand_party)) +
+  geom_boxplot() +
+  coord_flip(ylim = c(0, 3000)) 
 ```
 
 
@@ -1232,70 +1227,117 @@ The total amounts contributed for each party were very similar when plotted over
 
 ### Plot One
 ```{r echo=FALSE, Plot_One}
-# Remove unnessesary occupations
-occs = ohio[ohio$contbr_occupation != "INFORMATION REQUESTED",]
-occs = occs[occs$contbr_occupation != "",]
-occs = occs[occs$contbr_occupation != "INFORMATION REQUESTED PER BEST EFFORTS",]
-
-
-#get df with top 25 occupations
-topocc = sort(table(occs$contbr_occupation),decreasing = TRUE)[1:25]
-occs = ohio[ohio$contbr_occupation %in% rownames(topocc),]
-## group by occupation and party
-occbyparty <- occs %>% 
-    group_by(contbr_occupation,cand_party) %>% summarise(num=length(contbr_occupation))
-
-## changed to wide format
-occs <- dcast(occbyparty, contbr_occupation + num ~ cand_party,value.var="num")
-
-## group by contbr occupation again (there must be a better way of doing this)
-occbyparty <- occs %>% 
-    group_by(contbr_occupation) %>%   
-    summarise(dem=sum(Democratic,na.rm=TRUE),ind = sum(Independent,na.rm=TRUE),rep=sum(Republican,na.rm=TRUE))
-
-
-
-# add total and percentages to each column.
+# create total, and percentage of contributions features in occby party
 occbyparty$total <- occbyparty$dem + occbyparty$ind + occbyparty$rep
-
-
 occbyparty$dem <- (occbyparty$dem/occbyparty$total)*100
-
 occbyparty$ind <- (occbyparty$ind/occbyparty$total)*100
-
 occbyparty$rep <- (occbyparty$rep/occbyparty$total)*100
-
+# Remove total as no longer neccesary
 occbyparty$total <- NULL
 
+#change back to long format
 occ <- melt(occbyparty, id.vars = "contbr_occupation")
 
-
-
-ggplot(occ,aes(x = contbr_occupation,y=value,fill=variable))+
-  geom_bar(stat="identity") +
-  coord_flip()+ 
- scale_fill_manual(values=c("blue", "white", "red"))
+ggplot(occ,aes(x = contbr_occupation,y = value,fill = variable)) +
+  geom_bar(stat = "identity",colour = '#C0C0C0') +
+  coord_flip() + 
+  scale_fill_manual("Party",
+                    values = c("#5555FF",
+                               "white",
+                               "#FF5555"),
+                    labels = c("Democratic",
+                               "Independent",
+                               "Republican")) + 
+  theme(panel.background = element_rect(fill = "white")) +
+  ggtitle("Contributions to Parties by Occupation") +
+  ylab("Percentage of contributions made") +
+  xlab("Contributor Occupation")  
+  
 
 ```
 
 ### Description One
-
+This chart allows us to look at the tendencies of different occupations to contribute to different parties. We all have stereotypes about what occupations we expect to support each party and, for me, this chart confirms some while destroying others. In particular I was not surprised to see such a high percentage of contributions for the Repbulican party by the self employed or by bankers. On the other hand, I was surprised by the high percentage of contributions for the Democratic party by bankers and consultants. 
 
 ### Plot Two
 ```{r echo=FALSE, Plot_Two}
+#Added sum feature to order the plot
+getSum <- function(cand){
+  num <- count(ohio[ohio$cand_nm == cand,])
+  return(num[["n"]])
+  }
+ohio$sum <- apply(as.matrix(ohio$cand_nm),1,getSum)
 
+# Added new name feature to include the number of contributions for each candidate
+getNewName <- function(cand){
+  num <- count(ohio[ohio$cand_nm == cand,])
+  newname <- paste0(cand,'\n (',num," contributions)")
+  return(newname)
+  }
+ohio$cand_nm_with_count <-
+  apply(as.matrix(ohio$cand_nm),1,getNewName)
+
+
+ggplot(ohio,
+       aes(x = reorder(cand_nm_with_count,sum),
+           y = contb_receipt_amt,fill = cand_party)) +
+  geom_boxplot() +
+  coord_flip(ylim = c(0, 3000)) +
+  theme(text = element_text(size = 10)) +
+  ggtitle("Distribution of Contributions\n to each Candidate") +
+  ylab("Amount of Contribution") +
+  xlab("Candidate") +
+  scale_fill_manual("Party",
+                    values = c("#5555FF",
+                               "white",
+                               "#FF5555"),
+                    labels = c("Democratic",
+                               "Independent",
+                               "Republican"))
 ```
 
 ### Description Two
-
+The distribution of contribution amounts varied quite a bit between candidates. In this chart I have ordered the candidates according to the number of contributions they have recieved. We can see that the more unusual contribution distributions occur with the candidates who have lower numbers of contributions. We can see that at the moment Hilary Clinton has the greatest variance amongst her contribution amounts for any candidate with more than a hundred contributions. Jeb Bush has a huge variance in his contribution amounts but has only recieved 26 contributions. This plot also allows us to see the banding of contributions around the $1000 mark. 
 
 ### Plot Three
 ```{r echo=FALSE, Plot_Three}
+ohio <- ohio[order(ohio$contb_receipt_dt),]
+
+ohio$cand_cumulative <- ave(ohio$contb_receipt_amt,
+                            ohio$cand_nm,
+                            FUN = cumsum) 
+
+cbPalette <- c("#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+ggplot(ohio[order(ohio$contb_receipt_dt),],
+       aes(x = contb_receipt_dt,
+           y = cand_cumulative,
+           color = cand_nm,
+           linetype = cand_nm)) +
+  geom_line() +
+  scale_linetype_manual(values = c(rep("solid", 5),
+                                   rep("dashed", 5),
+                                   rep("twodash", 5))) +
+  scale_color_manual(values = c(cbPalette,cbPalette,cbPalette)) +
+  scale_x_date(limits = as.Date(c('2015-03-01',
+                                  '2015-07-01'))) +
+  scale_y_sqrt(labels = comma) + 
+  ggtitle("Total Amount of Contributions\nover Time by Candidate") +
+  ylab("Total Contribution Amount") +
+  xlab("Month") + 
+  labs(linetype = 'Candidate',color = 'Candidate')
 
 ```
 
 ### Description Three
-
+In this plot we can see the rate at which the total amount of contributions for each candidate is increasing. We can see that Hilary Clinton has the highest amount so far and, up until July at least, continues to recieve the highest amount in contributions. However Jeb Bush, whose only started running in the middle of June, seems to be recieving donations at a similar rate and could have caught up now that more time has past. 
+A square root scale was used for the amount as it allows us to see the differences between the other candidates much more easily. 
+Most candidates have a sharp rise at or near the begining of their campaign, presumably at the time they anounce their candidancy.
+Another interesting feature of this plot is the appearance of 'steps' in the lines. While Hilary Clinton's plot is fairly linear, Ted Cruz's plot is relatively flat with periodic jumps in the total amount. I would be interested to see if there are any specific events which tie in with these jumps. 
 ------
 
 # Reflection
+
+This dataset has information on donations for the first few months of the 2016 Campaign. I started by looking at the candidates and the number of contributions they had received. It was obvious that some candidates did not have enough contributions to create any useful analysis, however about half the candidates had recieved substantial contributions. The information in the dataset was not enough on it's own for very interesting analysis so I manually added features for the candidates, age, gender and party. I also added the date that they started campaigning as I felt that could be an important feature when explaining why some candidates had so many more contributions than others. In fact, it was only the candidates party which was of much use in the analysis. 
+I was interested in the distribution of the amounts of the contributions both by party and by candidate. I noticed that the median contribution amount was the same for each party, however the mode and mean were radically different. Comparing histograms to look at the distribution of contributions at first appeared to show the same distribution. When I decreased the binsize however it became apparent that the Democratic parties contributions peaked in the smallest bin while the Republican party received more contributions in the next bin size. This difference became much more apparant when I split the donations into 20% quantile groups (instead of using linear bin groups) and charted how many contributions were made to each party in each group. 
+I felt that the employer and occupation features were particularly interesting and there were a number of trends to be found within them. There were a number of occupation titles that were ambigious as well as a fair amount of overlap between some occupations. The biggest problem with these features was the low number of samples for each occupation or employer. 
+Many of the problems with this data set would be overcome with updated data. The data is continually changing and since this dataset was collected a number of additional candidates have joined the presidential race. In addition, the low sample size problems with the occupations and employers would be alliviated with more up to date data. It will be interesting to revisit this project in a few months to see what has changed and what has stayed the same. 
